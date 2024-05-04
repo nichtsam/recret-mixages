@@ -50,6 +50,14 @@ module.exports = {
       },
     },
 
+    // Shadcn
+    {
+      files: ["app/components/ui/*.{js,jsx,ts,tsx}"],
+      rules: {
+        "react/prop-types": "off",
+      },
+    },
+
     // Typescript
     {
       files: ["**/*.{ts,tsx}"],
