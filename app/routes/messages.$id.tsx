@@ -10,6 +10,7 @@ import {
 } from "#app/components/ui/card";
 import { Input } from "#app/components/ui/input";
 import { Separator } from "#app/components/ui/separator";
+import { db } from "#app/utils/db.server";
 import { getFormProps, getInputProps, useForm } from "@conform-to/react";
 import { getZodConstraint, parseWithZod } from "@conform-to/zod";
 import { ActionFunctionArgs, LoaderFunctionArgs, json } from "@remix-run/node";
@@ -26,9 +27,20 @@ const schema = z.object({
   code: z.string(),
 });
 
-export const loader = ({ request, params: { id } }: LoaderFunctionArgs) => {
+export const loader = async ({
+  request,
+  params: { id },
+}: LoaderFunctionArgs) => {
   if (!id) {
     throw Error("Secret ID is required");
+  }
+
+  const message = await db.query.messages.findFirst({
+    where: (message, { eq }) => eq(message.id, id),
+  });
+
+  if (!message) {
+    throw new Response("Not found", { status: 404 });
   }
 
   return json({
@@ -37,8 +49,16 @@ export const loader = ({ request, params: { id } }: LoaderFunctionArgs) => {
   });
 };
 
-function retrieveMessage() {
-  return "superdupersecretsuperdupersecretsuperdupersecretsuperdupersecret";
+async function retrieveMessage(id: string) {
+  const message = await db.query.messages.findFirst({
+    where: (messages, { eq }) => eq(messages.id, id),
+  });
+
+  if (!message) {
+    throw new Response("Not found", { status: 404 });
+  }
+
+  return message.message;
 }
 
 export const action = async ({
@@ -61,7 +81,7 @@ export const action = async ({
     );
   }
 
-  const message = retrieveMessage();
+  const message = await retrieveMessage(id);
 
   return json({
     result: submission.reply(),

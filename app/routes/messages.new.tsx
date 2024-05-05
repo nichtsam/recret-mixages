@@ -13,6 +13,8 @@ import {
   useForm,
 } from "@conform-to/react";
 import { ErrorList } from "#app/components/form";
+import { db } from "#app/utils/db.server";
+import { messages } from "#drizzle/schema";
 
 const INTENT_CONFIRM = "confrim";
 const INTENT_CANCEL = "cancel";
@@ -30,9 +32,12 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-function secretifyMessage(message: string, code: string) {
-  `${message}-${code}`;
-  return 100;
+async function secretifyMessage(message: string) {
+  const { id } = (
+    await db.insert(messages).values({ message }).returning({ id: messages.id })
+  )[0];
+
+  return id;
 }
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -62,8 +67,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         confirm: false,
       };
     case INTENT_CREATE: {
-      const { message, code } = submission.value;
-      const secretId = secretifyMessage(message, code);
+      const { message } = submission.value;
+      const secretId = await secretifyMessage(message);
       return redirect(`/messages/${secretId}`);
     }
     default:
