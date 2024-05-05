@@ -11,6 +11,7 @@ import {
 import { Input } from "#app/components/ui/input";
 import { Separator } from "#app/components/ui/separator";
 import { db } from "#app/utils/db.server";
+import { decrypt } from "#app/utils/encryption.server";
 import { getFormProps, getInputProps, useForm } from "@conform-to/react";
 import { getZodConstraint, parseWithZod } from "@conform-to/zod";
 import { ActionFunctionArgs, LoaderFunctionArgs, json } from "@remix-run/node";
@@ -49,18 +50,6 @@ export const loader = async ({
   });
 };
 
-async function retrieveMessage(id: string) {
-  const message = await db.query.messages.findFirst({
-    where: (messages, { eq }) => eq(messages.id, id),
-  });
-
-  if (!message) {
-    throw new Response("Not found", { status: 404 });
-  }
-
-  return message.message;
-}
-
 export const action = async ({
   request,
   params: { id },
@@ -81,11 +70,33 @@ export const action = async ({
     );
   }
 
-  const message = await retrieveMessage(id);
+  const message = await db.query.messages.findFirst({
+    where: (messages, { eq }) => eq(messages.id, id),
+  });
+
+  if (!message) {
+    throw new Response("Not found", { status: 404 });
+  }
+
+  const encrypted = message.message;
+  const { code } = submission.value;
+
+  let decrypted: string;
+  try {
+    decrypted = decrypt(encrypted, code);
+  } catch {
+    return json(
+      {
+        result: submission.reply({ fieldErrors: { code: ["Code is wrong"] } }),
+        message: null,
+      },
+      { status: 401 }
+    );
+  }
 
   return json({
     result: submission.reply(),
-    message,
+    message: decrypted,
   });
 };
 

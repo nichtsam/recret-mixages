@@ -15,6 +15,7 @@ import {
 import { ErrorList } from "#app/components/form";
 import { db } from "#app/utils/db.server";
 import { messages } from "#drizzle/schema";
+import { encrypt } from "#app/utils/encryption.server";
 
 const INTENT_CONFIRM = "confrim";
 const INTENT_CANCEL = "cancel";
@@ -33,10 +34,6 @@ export const meta: MetaFunction = () => {
 };
 
 async function secretifyMessage(message: string) {
-  const { id } = (
-    await db.insert(messages).values({ message }).returning({ id: messages.id })
-  )[0];
-
   return id;
 }
 
@@ -67,9 +64,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         confirm: false,
       };
     case INTENT_CREATE: {
-      const { message } = submission.value;
-      const secretId = await secretifyMessage(message);
-      return redirect(`/messages/${secretId}`);
+      const { message, code } = submission.value;
+
+      const encrypted = encrypt(message, code);
+
+      const { id } = (
+        await db
+          .insert(messages)
+          .values({ message: encrypted })
+          .returning({ id: messages.id })
+      )[0];
+
+      return redirect(`/messages/${id}`);
     }
     default:
       throw new Response(`Invalid intent "${intent}"`, { status: 400 });
