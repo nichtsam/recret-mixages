@@ -103,7 +103,6 @@ export const action = async ({
 export default function SecretMessage() {
   const data = useLoaderData<typeof loader>();
   const location = useLocation();
-  location.pathname;
 
   const actionData = useActionData<typeof action>();
 
